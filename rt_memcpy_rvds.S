@@ -74,34 +74,44 @@
 
 rt_memcpy
         CMP         R0, #0
-        BNE         rt_memcpy_1
+        BNE         rt_memcpy_1   ; 如果 R0 != 0 则执行 rt_memcpy_1
         BX          LR                      ; return if pdest == NULL
 
 rt_memcpy_1
         CMP         R1, #0
-        BNE         rt_memcpy_2
+        BNE         rt_memcpy_2   ; 如果 R1 != 0 则执行 rt_memcpy_2
         BX          LR                      ; return if psrc  == NULL
 
 rt_memcpy_2
         CMP         R2, #0
-        BNE         rt_memcpy_3
+        BNE         rt_memcpy_3   ; 如果 R2 != 0 则执行 rt_memcpy_3
         BX          LR                      ; return if size  == 0
 
 rt_memcpy_3
-        STMFD       SP!, {R3-R12}           ; save registers on stack
-        PUSH        {R0}                    ; save pdest 
+        STMFD       SP!, {R3-R12}           ; save registers on stack 压栈，将 R3 - R12 存到 SP 开始的位置，sp 向下递减
+        PUSH        {R0}                    ; save pdest 将 R0 入栈
+; 此时的栈空间：
+; 低地址      <------->       高地址
+; R0 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12
 
 chk_align_32                                ; check if both dest & src 32-bit aligned
+        ; 检查目的地址 0x03 : 0011; 如果是 4 字节对齐，那么 最后 2bit 一定为 0，也就是 data&0x03 一定为 0
         AND         R3, R0, #0x03
+        ; 检查源地址 0x03 : 0011; 如果是 4 字节对齐，那么 最后 2bit 一定为 0，也就是 data&0x03 一定为 0
         AND         R4, R1, #0x03
-        CMP         R3, R4
+        CMP         R3, R4  ; 如果相等，要么都为 0，4字节对齐；要么地址相同，不考虑这个情况；
         BNE         chk_align_16            ; not 32-bit aligned, check for 16-bit alignment
 
+        ; 此时，处理 4 字节对齐的代码
+        ; R3 = 0x04 - R3 = 0x04 - 0 = 0x04
         RSB         R3, R3, #0x04           ; compute 1-2-3 pre-copy bytes (to align to the next 32-bit boundary)
+        ; R3 = R3 & 0x03 = 0x04 & 0x03 = 0
         AND         R3, R3, #0x03
+        ; 此时 R3 = 0
 
 pre_copy_1
         CMP         R3, #1                  ; copy 1-2-3 bytes (to align to the next 32-bit boundary)
+        ; if R3 < 1 then BCC copy_32_1
         BCC         copy_32_1               ; start real 32-bit copy
         CMP         R2, #1                  ; check if any more data to copy
         BCS         pre_copy_1_cont
@@ -134,9 +144,16 @@ pre_copy_2
 
 
 copy_32_1
+        ; R2 : size
+        ; if R2 < 360 then BCC copy_32_2
         CMP         R2, #(04*10*09)         ; Copy 9 chunks of 10 32-bit words (360 octets per loop)
         BCC         copy_32_2
+        ; R2 >= 360
+        ; IA 表示每次传送后地址加 4
+        ; LDM(Load Data Much) 多数据加载
+        ; LDMIA 意思是，将 R1 地址上的数据加载到 R3 - R12，先存 R3；这里存了 10*4 字节，R1 地址加 4
         LDMIA       R1!, {R3-R12}
+        ; STMIA 多数据存储，将 R3 - R12 里的数据存到 R0 地址，然后 R0 地址加 4
         STMIA       R0!, {R3-R12}
         LDMIA       R1!, {R3-R12}
         STMIA       R0!, {R3-R12}
