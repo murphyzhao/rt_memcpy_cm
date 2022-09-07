@@ -4,8 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * Change Logs:
- * Date         Author    Notes
- * 2020-12-23   Meco Man  porting to RT-Thread
+ * Date         Author         Notes
+ * 2020-12-23   Meco Man       porting to RT-Thread
+ * 2022-09-07   Lightningsemi  modify file name and function name
  */
 
 @********************************************************************************************************
@@ -23,7 +24,7 @@
 @                                           PUBLIC FUNCTIONS
 @********************************************************************************************************
 
-.global  rt_memcpy
+.global  ln_asm_memcpy
 
 
 @********************************************************************************************************
@@ -67,27 +68,27 @@
 @                   (b) MUST   be implemented with non-conditional branches.
 @********************************************************************************************************
 
-@ void  rt_memcpy (void        *pdest,       @  ==>  R0
+@ void  ln_asm_memcpy (void        *pdest,       @  ==>  R0
 @                  void        *psrc,        @  ==>  R1
 @                  rt_ubase_t   count)       @  ==>  R2
 
 .thumb_func
-rt_memcpy:
+ln_asm_memcpy:
         CMP         R0, #0
-        BNE         rt_memcpy_1
+        BNE         ln_asm_memcpy_1
         BX          LR                      @ return if pdest == NULL
 
-rt_memcpy_1:
+ln_asm_memcpy_1:
         CMP         R1, #0
-        BNE         rt_memcpy_2
+        BNE         ln_asm_memcpy_2
         BX          LR                      @ return if psrc  == NULL
 
-rt_memcpy_2:
+ln_asm_memcpy_2:
         CMP         R2, #0
-        BNE         rt_memcpy_3
+        BNE         ln_asm_memcpy_3
         BX          LR                      @ return if size  == 0
 
-rt_memcpy_3:
+ln_asm_memcpy_3:
         STMFD       SP!, {R3-R12}           @ save registers on stack
         PUSH        {R0}                    @ save pdest 
 
@@ -105,7 +106,7 @@ pre_copy_1:
         BCC         copy_32_1               @ start real 32-bit copy
         CMP         R2, #1                  @ check if any more data to copy
         BCS         pre_copy_1_cont
-        B           rt_memcpy_end           @ no more data to copy (see Note #4b)
+        B           ln_asm_memcpy_end           @ no more data to copy (see Note #4b)
 
 pre_copy_1_cont:
         LDRB        R4, [R1], #1
@@ -259,14 +260,14 @@ copy_08_1:
 
 copy_08_2:
         CMP         R2, #(01*01*01)         @ Copy remaining 8-bit words
-        BCC         rt_memcpy_end
+        BCC         ln_asm_memcpy_end
         LDRB        R3, [R1], #1
         STRB        R3, [R0], #1
         SUB         R2, R2, #(01*01*01)
         B           copy_08_2
 
 
-rt_memcpy_end:
+ln_asm_memcpy_end:
         POP         {R0}                    @ pop pdest
         LDMFD       SP!, {R3-R12}           @ restore registers from stack
         BX          LR                      @ return
